@@ -1,3 +1,9 @@
+// TODO : Adjust the speed of BFS traversal using animation frame rate
+// TODO : Draw the shortest path after BFS is complete
+// TODO : Add DFS algorithm option using stack !
+// TODO : Add A* algorithm option with heuristic 
+
+
 /** * Light / Dark Theme Toggle
  */
 
@@ -39,6 +45,8 @@ const RECT_SIZE = 40; // Size of each rectangle
 const LINE_WIDTH = 5; // Line that separates rectangles
 canvas.width = 800 - LINE_WIDTH;
 canvas.height = 400 - LINE_WIDTH;
+var startPos = { x: 0, y: 0 };
+var endPos = { x: 12, y: 6 };
 
 ctx.fillStyle = "#fff";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -118,17 +126,51 @@ const handleClick = (e, isInitialClick) => {
     }
 };
 
-drawGrid(0, 0, "#ff0000");
-drawGrid(12, 0, "#00ff00");
+drawGrid(startPos.x, startPos.y, "#013601ff");
+drawGrid(endPos.x, endPos.y, "#ff0000ff");
 
 let queue = [];
 let current = null;
 let neighborIndex = 0;
+let cameFrom = new Map();
+
+function drawShortestPath(endNode) {
+    console.log("Drawing shortest path");
+    console.log(endNode);
+    console.log(cameFrom);
+    const entries = [...cameFrom].reverse();
+    for (const [key, value] of entries) {
+        const [newX, newY] = key.split(',').map(Number);
+        console.log("Looking at node: ", newX, newY);
+        console.log("Looking for end node at: ", endNode.x, endNode.y);
+        if (endNode.x == newX && newY == endNode.y) {
+            console.log("-------------------");
+            console.log("Found path node: ", newX, newY);
+            const [currentX, currentY] = value.split(',').map(Number);
+            endNode = { x: currentX, y: currentY };
+            if (currentX === startPos.x && currentY === startPos.y) {
+                console.log("Reached start node, stopping path drawing.");
+                break;
+            }
+            drawGrid(currentX, currentY, "#525291ff");
+            console.log("Drawing path at: ", currentX, currentY);
+            console.log(newX, newY);
+            console.log(currentX, currentY);
+        }
+        console.log("-------------------");
+    }
+    // while (endNode) {
+
+    // }
+}
 
 function BFS() {
     console.log("BFS started");
-    queue.push({ x: 0, y: 0 });
-    graph[0][0].visited = true;
+    queue.push({ x: startPos.x, y: startPos.y });
+    graph[startPos.y][startPos.x].visited = true;
+    graph[startPos.y][startPos.x].isStart = true;
+    graph[endPos.y][endPos.x].isEnd = true;
+    cameFrom.set(`${startPos.x},${startPos.y}`, null);
 
     const directions = [
         { dx: 1, dy: 0 },
@@ -137,7 +179,7 @@ function BFS() {
         { dx: 0, dy: -1 }
     ];
 
-    function BFSStep(initial) {
+    function BFSStep() {
         if (!current) {
             current = queue.shift();
             neighborIndex = 0;
@@ -148,8 +190,16 @@ function BFS() {
                 startBtn.disabled = false;
                 return;
             }
-            if (!initial) {
-                drawGrid(current.x, current.y, "#00ff00"); // Green for current node
+            if (graph[current.y][current.x].isEnd) {
+                clearInterval(intervalId);
+                console.log("BFS reached the end position!");
+                isRunning = false;
+                startBtn.disabled = false;
+                drawShortestPath(current);
+                return;
+            } else {
+                if (!graph[current.y][current.x].isStart)
+                    drawGrid(current.x, current.y, "#00ff00"); // Green for current node
             }
         }
 
@@ -165,7 +215,11 @@ function BFS() {
 
                 graph[newY][newX].visited = true;
                 queue.push({ x: newX, y: newY });
-                drawGrid(newX, newY, "#ffff00"); // yellow for visited
+                if (cameFrom.has(`${newX},${newY}`) === false) {
+                    cameFrom.set(`${newX},${newY}`, `${current.x},${current.y}`);
+                }
+                if (!graph[newY][newX].isEnd)
+                    drawGrid(newX, newY, "#ffff00"); // yellow for visited
             }
         } else {
             // finished all neighbors of current node
@@ -173,11 +227,10 @@ function BFS() {
         }
     }
 
-    BFSStep(true);
 
     const intervalId = setInterval(() => {
-        BFSStep(false);
-    }, 100);
+        BFSStep()
+    }, 10);
 }
 
 startBtn.onclick = () => {
