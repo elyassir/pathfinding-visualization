@@ -22,9 +22,9 @@ const COLORS = {
 
 const DIRECTIONS = [
   { dx: 1, dy: 0 },   // right
+  { dx: 0, dy: -1 },   // up
   { dx: -1, dy: 0 },  // left
   { dx: 0, dy: 1 },   // down
-  { dx: 0, dy: -1 }   // up
 ];
 
 const state = {
@@ -34,7 +34,7 @@ const state = {
   isRunning: false,
   isMouseDown: false,
   fillColor: COLORS.wall,
-  startPos: { x: 0, y: 0 },
+  startPos: { x: 3, y: 3 },
   endPos: { x: 12, y: 6 },
   queue: [],
   current: null,
@@ -405,11 +405,13 @@ const PathfindingAlgorithms = {
     UIControls.startBtn.disabled = false;
   }
 };
+
+
 // ============================================================================
 // A* ALGORITHM 
 // ============================================================================
 const AStarAlgorithm = {
-  openList: [],
+  openList: new Array(),
   closedList: new Set(),
   cameFrom: new Map(),
   gScore: new Map(),
@@ -417,23 +419,20 @@ const AStarAlgorithm = {
 
   init() {
     this.gScore.set(`${state.startPos.x},${state.startPos.y}`, 0);
-    console.log('G Score Start:', this.gScore.get(`${state.startPos.x},${state.startPos.y}`));
-    console.log('G list:', this.gScore);
-    this.fScore.set(`${state.startPos.x},${state.startPos.y}`, this.heuristic(state.startPos, state.endPos));
-    this.openList.push(state.startPos);
+    this.fScore.set(`${state.startPos.x},${state.startPos.y}`, 0 + this.heuristic(state.startPos, state.endPos)); // f(x) = g(x) + h(x)
+    this.openList.push({ x: state.startPos.x, y: state.startPos.y, f: this.fScore.get(`${state.startPos.x},${state.startPos.y}`) });
   },
 
   logic() {
-    console.log('G Score List:', this.gScore);
     var current = this.getLowestFScoreNode();
-    console.log('Current Node:', current);
 
     if (!current) {
-      console.log('No path found');
+      console.error('No path found');
+      console.error('Error AS13')
+      clearInterval(state.intervalId);
       return;
     }
 
-    this.openList = this.openList.filter(node => node !== current);
     this.closedList.add(`${current.x},${current.y}`);
     CanvasManagement.drawGrid(current.x, current.y, COLORS.current);
 
@@ -455,22 +454,27 @@ const AStarAlgorithm = {
         continue;
       }
 
-      var gScore = this.gScore.get(`${neighborX},${neighborY}`);
-      if (gScore === undefined) {
-        gScore = Infinity;
-      }
+      var gScore = this.gScore.get(`${neighborX},${neighborY}`) ?? Infinity;
 
       const currentG = this.gScore.get(`${current.x},${current.y}`) ?? Infinity;
-      const tentativeGScore = currentG + this.cost(neighborX, neighborY);
+      const tentativeGScore = currentG + this.cost();
 
       if (tentativeGScore < gScore) {
         this.cameFrom.set(`${neighborX},${neighborY}`, `${current.x},${current.y}`);
         this.gScore.set(`${neighborX},${neighborY}`, tentativeGScore);
         this.fScore.set(`${neighborX},${neighborY}`, tentativeGScore + this.heuristic({ x: neighborX, y: neighborY }, state.endPos));
 
-        if (!this.openList.find(node => node.x === neighborX && node.y === neighborY)) {
-          this.openList.push({ x: neighborX, y: neighborY });
+        const existingNode = this.openList.find(n => n.x === neighborX && n.y === neighborY);
+        if (existingNode) {
+          existingNode.f = this.fScore.get(`${neighborX},${neighborY}`);
+        } else {
+          this.openList.push({ x: neighborX, y: neighborY, f: this.fScore.get(`${neighborX},${neighborY}`) });
         }
+
+        // if (!this.openList.find(node => node.x === neighborX && node.y === neighborY)) {
+        // this.openList.push({ x: neighborX, y: neighborY, f: this.fScore.get(`${neighborX},${neighborY}`) });
+        CanvasManagement.drawGrid(neighborX, neighborY, COLORS.visited);
+        // }
       }
     }
   },
@@ -478,7 +482,7 @@ const AStarAlgorithm = {
   loop() {
     state.intervalId = setInterval(() => {
       this.logic();
-    }, 1000);
+    }, 100);
   },
 
   heuristic(a, b) {
@@ -488,25 +492,25 @@ const AStarAlgorithm = {
   },
 
   getLowestFScoreNode() {
-    let lowestNode = null;
-    let lowestFScore = Infinity;
-    let lowestHScore = Infinity;
+    console.log('=== Getting node with lowest fScore ===');
+    let lowestNode = { x: -1, y: -1, f: Infinity };
 
-    for (const node of this.openList) {
-      const fScore = this.fScore.get(`${node.x},${node.y}`) ?? Infinity;
-      const hScore = this.heuristic(node, state.endPos);
-
-      if (fScore < lowestFScore ||
-        (fScore === lowestFScore && hScore < lowestHScore)) {
-        lowestFScore = fScore;
-        lowestHScore = hScore;
+    for (var j = this.openList.length - 1; j >= 0; j--) {
+      const node = this.openList[j];
+      console.log('Evaluating node:', node);
+      if (node.f < lowestNode.f) {
         lowestNode = node;
       }
     }
 
+    this.openList = this.openList.filter(node => !(node.x === lowestNode.x && node.y === lowestNode.y));
+    if (lowestNode.f === Infinity) {
+      return null; // No valid node found
+    }
     return lowestNode;
   },
-  cost(x, y) {
+
+  cost() {
     return 1; // Uniform cost for grid movement
   },
 
@@ -534,6 +538,11 @@ const AStarAlgorithm = {
     UIControls.startBtn.disabled = false;
     clearInterval(state.intervalId);
     state.intervalId = null;
+    this.openList = [];
+    this.closedList.clear();
+    this.cameFrom.clear();
+    this.gScore.clear();
+    this.fScore.clear();
   }
 };
 
