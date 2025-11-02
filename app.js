@@ -1,286 +1,563 @@
-// TODO : Adjust the speed of BFS traversal using animation frame rate
-// TODO : Draw the shortest path after BFS is complete
-// TODO : Add DFS algorithm option using stack !
-// TODO : Add A* algorithm option with heuristic 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
+const CANVAS_CONFIG = {
+  width: 800,
+  height: 400,
+  rectSize: 40,
+  lineWidth: 5
+};
 
-/** * Light / Dark Theme Toggle
- */
+const COLORS = {
+  background: '#fff',
+  rect: '#00f',
+  wall: '#000000ff',
+  start: '#013601ff',
+  end: '#ff0000ff',
+  current: '#00ff00',
+  visited: '#ffff00',
+  path: '#525291ff'
+};
 
+const DIRECTIONS = [
+  { dx: 1, dy: 0 },   // right
+  { dx: -1, dy: 0 },  // left
+  { dx: 0, dy: 1 },   // down
+  { dx: 0, dy: -1 }   // up
+];
 
-const toggleBtn = document.getElementById("theme-toggle");
-const currentTheme = localStorage.getItem("theme");
+const state = {
+  graph: [],
+  cols: 0,
+  rows: 0,
+  isRunning: false,
+  isMouseDown: false,
+  fillColor: COLORS.wall,
+  startPos: { x: 0, y: 0 },
+  endPos: { x: 12, y: 6 },
+  queue: [],
+  current: null,
+  neighborIndex: 0,
+  cameFrom: new Map(),
+  intervalId: null,
+  currentTheme: 'light'
+};
 
-// Load saved theme if any
-if (currentTheme) {
-    document.documentElement.setAttribute("data-theme", currentTheme);
-    toggleBtn.textContent = currentTheme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
-}
+// ============================================================================
+// THEME MANAGEMENT
+// ============================================================================
 
-// Toggle on click
-toggleBtn.addEventListener("click", () => {
-    const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-    toggleBtn.textContent = theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
-});
+const ThemeManager = {
+  init() {
+    const toggleBtn = document.getElementById('theme-toggle');
 
-if (!currentTheme) {
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-        toggleBtn.textContent = "☀️ Light Mode";
+    // Check system preference
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      this.setTheme('dark');
     }
-}
 
-/** * Canvas Setup
- */
+    toggleBtn.addEventListener('click', () => this.toggle());
+  },
 
-var graph = [];
-var isRunning = false;
+  toggle() {
+    const newTheme = state.currentTheme === 'dark' ? 'light' : 'dark';
+    this.setTheme(newTheme);
+  },
 
-const canvas = document.getElementById("canvas");
-const startBtn = document.getElementById("start-btn");
-const ctx = canvas.getContext("2d");
-const RECT_SIZE = 40; // Size of each rectangle
-const LINE_WIDTH = 5; // Line that separates rectangles
-canvas.width = 800 - LINE_WIDTH;
-canvas.height = 400 - LINE_WIDTH;
-var startPos = { x: 0, y: 0 };
-var endPos = { x: 12, y: 6 };
+  setTheme(theme) {
+    state.currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    const toggleBtn = document.getElementById('theme-toggle');
+    toggleBtn.textContent = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  }
+};
 
-ctx.fillStyle = "#fff";
-ctx.fillRect(0, 0, canvas.width, canvas.height);
-const RECT_COLOR = "#00f";
-const WALL_COLOR = "#000000ff";
+// ============================================================================
+// UI CONTROLS
+// ============================================================================
+
+const UIControls = {
+  startBtn: null,
+
+  init() {
+    this.startBtn = document.getElementById('start-btn');
+    this.startBtn.addEventListener('click', () => this.handleStart());
+  },
+
+  handleStart() {
+    console.log('Start button clicked');
+    this.startBtn.disabled = true;
+    state.isRunning = true;
+    GridManager.reset();
+    // PathfindingAlgorithms.BFS();
+    AStarAlgorithm.init();
+    AStarAlgorithm.loop();
+
+  }
+};
 
 
-function drawGrid(x, y, color = RECT_COLOR) {
-    ctx.beginPath();
-    ctx.rect(RECT_SIZE * x, RECT_SIZE * y, RECT_SIZE - LINE_WIDTH, RECT_SIZE - LINE_WIDTH);
-    ctx.fillStyle = color;
-    ctx.fill();
-}
+// ============================================================================
+// CANVAS MANAGEMENT
+// ============================================================================
 
-for (var j = 0; j < canvas.height / RECT_SIZE; j++) {
-    var row = [];
-    for (var i = 0; i < canvas.width / RECT_SIZE; i++) {
-        drawGrid(i, j, RECT_COLOR);
+const CanvasManagement = {
+  canvas: null,
+  ctx: null,
+
+  init() {
+    this.canvas = document.getElementById('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width = CANVAS_CONFIG.width - CANVAS_CONFIG.lineWidth;
+    this.canvas.height = CANVAS_CONFIG.height - CANVAS_CONFIG.lineWidth;
+    this.initGraph();
+    this.clearCanvas();
+  },
+
+  initGraph() {
+    const cols = Math.floor(CANVAS_CONFIG.width / CANVAS_CONFIG.rectSize);
+    const rows = Math.floor(CANVAS_CONFIG.height / CANVAS_CONFIG.rectSize);
+
+    state.cols = cols;
+    state.rows = rows;
+    state.graph = [];
+
+    for (let j = 0; j < rows; j++) {
+      const row = [];
+      for (let i = 0; i < cols; i++) {
         row.push({ visited: false, wall: false });
+      }
+      state.graph.push(row);
     }
-    graph.push(row);
-}
 
-var isMouseDown = false;
-var fillColor = "#000000ff";
+    state.graph[state.startPos.y][state.startPos.x].isStart = true;
+    state.graph[state.endPos.y][state.endPos.x].isEnd = true;
+  },
 
-window.onmousedown = (e) => {
-    if (isRunning) return;
-    isMouseDown = true;
-    handleClick(e, true);
-}
-window.onmouseup = (e) => {
-    if (isRunning) return;
-    isMouseDown = false;
-}
+  clearCanvas() {
+    this.ctx.fillStyle = COLORS.background;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  },
 
-window.onmousemove = (e) => {
-    if (!isMouseDown || isRunning) return;
-    handleClick(e, false);
-}
-
-const handleClick = (e, isInitialClick) => {
-    const rect = canvas.getBoundingClientRect();
-    const rectX = rect.left + window.scrollX; // Add horizontal scroll
-    const rectY = rect.top + window.scrollY;  // Add vertical scroll
-    // console.log("Canvas position with scroll - X: " + rectX + ", Y: " + rectY);
-    const clickX = e.clientX + window.scrollX - rectX;
-    const clickY = e.clientY + window.scrollY - rectY;
-    // console.log("Click position with scroll - X: " + clickX + ", Y: " + clickY);
-    if (clickX >= 0 && clickX <= canvas.width && clickY >= 0 && clickY <= canvas.height) {
-        console.log("Clicked inside the canvas");
-        // var rectX = (e.x - canvas.offsetLeft);
-        // var rectY = (e.y - canvas.offsetTop);
-        if (clickX % RECT_SIZE > RECT_SIZE - LINE_WIDTH || clickY % RECT_SIZE > RECT_SIZE - LINE_WIDTH) {
-            console.log("Clicked on a line, ignoring.");
-            return;
-        }
-        if (isInitialClick) {
-            const pixelData = ctx.getImageData(clickX, clickY, 1, 1).data;
-            const pixelColor = `rgba(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]}, ${pixelData[3] / 255})`;
-            fillColor = pixelColor != "rgba(0, 0, 0, 1)" ? WALL_COLOR : RECT_COLOR;
-            console.log("Selected Fill Color: " + pixelColor);
-            // return;
-        }
-        console.log("Relative Click Position - X: " + clickX + ", Y: " + clickY);
-        const gridX = Math.floor(clickX / RECT_SIZE);
-        const gridY = Math.floor(clickY / RECT_SIZE);
-        console.log("Grid Position - X: " + gridX + ", Y: " + gridY);
-        drawGrid(gridX, gridY, fillColor);
-        if (fillColor === WALL_COLOR) {
-            graph[gridY][gridX].wall = true;
-        } else {
-            graph[gridY][gridX].wall = false;
-        }
-    } else {
-        console.log("Clicked outside the canvas");
+  drawGrid(x, y, color = COLORS.rect, skipStartEnd = false) {
+    if (!skipStartEnd) {
+      if (x === state.startPos.x && y === state.startPos.y) {
+        return; // Start position is drawn last
+      } else if (x === state.endPos.x && y === state.endPos.y) {
+        return; // End position is drawn last
+      }
     }
+    this.ctx.beginPath();
+    this.ctx.rect(
+      CANVAS_CONFIG.rectSize * x,
+      CANVAS_CONFIG.rectSize * y,
+      CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth,
+      CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth
+    );
+    this.ctx.fillStyle = color;
+    this.ctx.fill();
+  },
+
+  drawStartAndEnd() {
+    this.drawGrid(state.startPos.x, state.startPos.y, COLORS.start, true);
+    this.drawGrid(state.endPos.x, state.endPos.y, COLORS.end, true);
+  },
+
+  getGridCoordinates(clickX, clickY) {
+    return {
+      x: Math.floor(clickX / CANVAS_CONFIG.rectSize),
+      y: Math.floor(clickY / CANVAS_CONFIG.rectSize)
+    };
+  },
+
+  getPixelColor(x, y) {
+    const pixelData = this.ctx.getImageData(x, y, 1, 1).data;
+    return `rgba(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]}, ${pixelData[3] / 255})`;
+  },
+
+  isOnGridLine(clickX, clickY) {
+    return (
+      clickX % CANVAS_CONFIG.rectSize > CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth ||
+      clickY % CANVAS_CONFIG.rectSize > CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth
+    );
+  }
 };
 
-drawGrid(startPos.x, startPos.y, "#013601ff");
-drawGrid(endPos.x, endPos.y, "#ff0000ff");
+// ============================================================================
+// GRID MANAGEMENT
+// ============================================================================
 
-let queue = [];
-let current = null;
-let neighborIndex = 0;
-let cameFrom = new Map();
+const GridManager = {
+  init() {
+    this.drawBoard();
+  },
 
-function drawShortestPath(endNode) {
-    console.log("Drawing shortest path");
-    console.log(endNode);
-    console.log(cameFrom);
-    const entries = [...cameFrom].reverse();
+  drawBoard() {
+    for (let j = 0; j < state.rows; j++) {
+      for (let i = 0; i < state.cols; i++) {
+        let color = GridManager.getColorAt(i, j);
+        CanvasManagement.drawGrid(i, j, color);
+      }
+    }
+    CanvasManagement.drawStartAndEnd();
+  },
+
+  reset() {
+    state.graph.forEach(row => {
+      row.forEach(cell => {
+        cell.visited = false;
+      });
+    });
+
+    state.queue = [];
+    state.current = null;
+    state.neighborIndex = 0;
+    state.cameFrom.clear();
+
+    if (state.intervalId) {
+      clearInterval(state.intervalId);
+      state.intervalId = null;
+    }
+
+    CanvasManagement.clearCanvas();
+    this.drawBoard();
+  },
+
+  toggleWall(gridX, gridY, isWall) {
+    // Don't allow walls on start or end positions
+    if ((gridX === state.startPos.x && gridY === state.startPos.y) ||
+      (gridX === state.endPos.x && gridY === state.endPos.y)) {
+      return;
+    }
+
+    state.graph[gridY][gridX].wall = isWall;
+    CanvasManagement.drawGrid(gridX, gridY, isWall ? COLORS.wall : COLORS.rect);
+  },
+
+  getColorAt(gridX, gridY) {
+    let color;
+    const i = gridX;
+    const j = gridY;
+    switch (true) {
+      case (i === state.startPos.x && j === state.startPos.y):
+        color = COLORS.start;
+        break;
+      case (i === state.endPos.x && j === state.endPos.y):
+        color = COLORS.end;
+        break;
+      case (state.graph[j][i].wall):
+        color = COLORS.wall;
+        break;
+      default:
+        color = COLORS.rect;
+    }
+    return color;
+  }
+};
+
+// ============================================================================
+// MOUSE INTERACTION
+// ============================================================================
+
+const MouseHandler = {
+  init() {
+    window.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    window.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+  },
+
+  handleMouseDown(e) {
+    if (state.isRunning) return;
+    state.isMouseDown = true;
+    this.handleClick(e, true);
+  },
+
+  handleMouseUp(e) {
+    if (state.isRunning) return;
+    state.isMouseDown = false;
+  },
+
+  handleMouseMove(e) {
+    if (!state.isMouseDown || state.isRunning) return;
+    this.handleClick(e, false);
+  },
+
+  handleClick(e, isInitialClick) {
+    const rect = CanvasManagement.canvas.getBoundingClientRect();
+    const clickX = e.clientX + window.scrollX - (rect.left + window.scrollX);
+    const clickY = e.clientY + window.scrollY - (rect.top + window.scrollY);
+
+    // Check if click is within canvas bounds
+    if (clickX < 0 || clickX > CANVAS_CONFIG.width ||
+      clickY < 0 || clickY > CANVAS_CONFIG.height) {
+      return;
+    }
+
+    // Check if click is on a grid line
+    if (CanvasManagement.isOnGridLine(clickX, clickY)) {
+      return;
+    }
+
+    // Determine fill color on initial click
+    if (isInitialClick) {
+      const pixelColor = CanvasManagement.getPixelColor(clickX, clickY);
+      state.fillColor = pixelColor !== 'rgba(0, 0, 0, 1)' ? COLORS.wall : COLORS.rect;
+    }
+
+    // Get grid coordinates and toggle wall
+    const { x: gridX, y: gridY } = CanvasManagement.getGridCoordinates(clickX, clickY);
+    GridManager.toggleWall(gridX, gridY, state.fillColor === COLORS.wall);
+  }
+};
+
+// ============================================================================
+// PATHFINDING ALGORITHMS
+// ============================================================================
+
+const PathfindingAlgorithms = {
+  drawShortestPath(endNode) {
+    const entries = [...state.cameFrom].reverse();
+    let currentNode = endNode;
+
     for (const [key, value] of entries) {
-        const [newX, newY] = key.split(',').map(Number);
-        console.log("Looking at node: ", newX, newY);
-        console.log("Looking for end node at: ", endNode.x, endNode.y);
-        if (endNode.x == newX && newY == endNode.y) {
-            console.log("-------------------");
-            console.log("Found path node: ", newX, newY);
-            const [currentX, currentY] = value.split(',').map(Number);
-            endNode = { x: currentX, y: currentY };
-            if (currentX === startPos.x && currentY === startPos.y) {
-                console.log("Reached start node, stopping path drawing.");
-                break;
-            }
-            drawGrid(currentX, currentY, "#525291ff");
-            console.log("Drawing path at: ", currentX, currentY);
-            console.log(newX, newY);
-            console.log(currentX, currentY);
-        }
-        console.log("-------------------");
+      const [nodeX, nodeY] = key.split(',').map(Number);
+
+      if (currentNode.x === nodeX && currentNode.y === nodeY) {
+        if (!value) break; // Reached start node
+
+        const [prevX, prevY] = value.split(',').map(Number);
+        currentNode = { x: prevX, y: prevY };
+
+        if (prevX === state.startPos.x && prevY === state.startPos.y) break;
+
+        CanvasManagement.drawGrid(prevX, prevY, COLORS.path);
+      }
     }
-    // while (endNode) {
+  },
 
-    // }
-}
+  BFS() {
+    console.log('BFS started');
 
-function BFS() {
-    console.log("BFS started");
-    queue.push({ x: startPos.x, y: startPos.y });
-    graph[startPos.y][startPos.x].visited = true;
-    graph[startPos.y][startPos.x].isStart = true;
-    graph[endPos.y][endPos.x].isEnd = true;
-    cameFrom.set(`${startPos.x},${startPos.y}`, null);
+    state.queue.push({ x: state.startPos.x, y: state.startPos.y });
+    state.graph[state.startPos.y][state.startPos.x].visited = true;
+    state.graph[state.startPos.y][state.startPos.x].isStart = true;
+    state.graph[state.endPos.y][state.endPos.x].isEnd = true;
+    state.cameFrom.set(`${state.startPos.x},${state.startPos.y}`, null);
 
-    const directions = [
-        { dx: 1, dy: 0 },
-        { dx: -1, dy: 0 },
-        { dx: 0, dy: 1 },
-        { dx: 0, dy: -1 }
-    ];
+    const BFSStep = () => {
+      if (!state.current) {
+        state.current = state.queue.shift();
+        state.neighborIndex = 0;
 
-    function BFSStep() {
-        if (!current) {
-            current = queue.shift();
-            neighborIndex = 0;
-            if (!current) {
-                clearInterval(intervalId);
-                console.log("BFS finished");
-                isRunning = false;
-                startBtn.disabled = false;
-                return;
-            }
-            if (graph[current.y][current.x].isEnd) {
-                clearInterval(intervalId);
-                console.log("BFS reached the end position!");
-                isRunning = false;
-                startBtn.disabled = false;
-                drawShortestPath(current);
-                return;
-            } else {
-                if (!graph[current.y][current.x].isStart)
-                    drawGrid(current.x, current.y, "#00ff00"); // Green for current node
-            }
+        if (!state.current) {
+          this.finish('BFS finished');
+          return;
         }
 
-        if (neighborIndex < directions.length) {
-            const dir = directions[neighborIndex++];
-            const newX = current.x + dir.dx;
-            const newY = current.y + dir.dy;
-
-            if (newX >= 0 && newX < canvas.width / RECT_SIZE &&
-                newY >= 0 && newY < canvas.height / RECT_SIZE &&
-                !graph[newY][newX].visited &&
-                !graph[newY][newX].wall) {
-
-                graph[newY][newX].visited = true;
-                queue.push({ x: newX, y: newY });
-                if (cameFrom.has(`${newX},${newY}`) === false) {
-                    cameFrom.set(`${newX},${newY}`, `${current.x},${current.y}`);
-                }
-                if (!graph[newY][newX].isEnd)
-                    drawGrid(newX, newY, "#ffff00"); // yellow for visited
-            }
-        } else {
-            // finished all neighbors of current node
-            current = null;
+        if (state.graph[state.current.y][state.current.x].isEnd) {
+          this.finish('BFS reached the end position!');
+          this.drawShortestPath(state.current);
+          return;
         }
-    }
 
+        if (!state.graph[state.current.y][state.current.x].isStart) {
+          CanvasManagement.drawGrid(state.current.x, state.current.y, COLORS.current);
+        }
+      }
 
-    const intervalId = setInterval(() => {
-        BFSStep()
-    }, 10);
-}
+      if (state.neighborIndex < DIRECTIONS.length) {
+        const dir = DIRECTIONS[state.neighborIndex++];
+        const newX = state.current.x + dir.dx;
+        const newY = state.current.y + dir.dy;
+        const cols = Math.floor(CANVAS_CONFIG.width / CANVAS_CONFIG.rectSize);
+        const rows = Math.floor(CANVAS_CONFIG.height / CANVAS_CONFIG.rectSize);
 
-startBtn.onclick = () => {
-    console.log("Start button clicked");
-    startBtn.disabled = true;
-    isRunning = true;
-    BFS();
-    console.log(graph);
+        if (newX >= 0 && newX < cols &&
+          newY >= 0 && newY < rows &&
+          !state.graph[newY][newX].visited &&
+          !state.graph[newY][newX].wall) {
+
+          state.graph[newY][newX].visited = true;
+          state.queue.push({ x: newX, y: newY });
+
+          if (!state.cameFrom.has(`${newX},${newY}`)) {
+            state.cameFrom.set(`${newX},${newY}`, `${state.current.x},${state.current.y}`);
+          }
+
+          if (!state.graph[newY][newX].isEnd) {
+            CanvasManagement.drawGrid(newX, newY, COLORS.visited);
+          }
+        }
+      } else {
+        state.current = null;
+      }
+    };
+
+    state.intervalId = setInterval(BFSStep, 10);
+  },
+
+  finish(message) {
+    console.log(message);
+    clearInterval(state.intervalId);
+    state.intervalId = null;
+    state.isRunning = false;
+    UIControls.startBtn.disabled = false;
+  }
 };
-// Implement start functionality here
+// ============================================================================
+// A* ALGORITHM 
+// ============================================================================
+const AStarAlgorithm = {
+  openList: [],
+  closedList: new Set(),
+  cameFrom: new Map(),
+  gScore: new Map(),
+  fScore: new Map(),
 
-// function drawPlayerO(x, y) {
-//     ctx.beginPath();
-//     ctx.arc(x * RECT_SIZE + RECT_SIZE / 2 + 3, y * RECT_SIZE + RECT_SIZE / 2 + 3, 15, 0, Math.PI * 2);
-//     ctx.strokeStyle = "#ff0000ff";
-//     ctx.lineWidth = 3;
-//     ctx.stroke();
-// }
+  init() {
+    this.gScore.set(`${state.startPos.x},${state.startPos.y}`, 0);
+    console.log('G Score Start:', this.gScore.get(`${state.startPos.x},${state.startPos.y}`));
+    console.log('G list:', this.gScore);
+    this.fScore.set(`${state.startPos.x},${state.startPos.y}`, this.heuristic(state.startPos, state.endPos));
+    this.openList.push(state.startPos);
+  },
 
-// function drawDestination(x, y) {
-//     ctx.beginPath();
-//     ctx.arc(x, y, 10, 0, Math.PI * 2);
-//     ctx.fillStyle = "#00ff00";
-//     ctx.fill();
-// }
+  logic() {
+    console.log('G Score List:', this.gScore);
+    var current = this.getLowestFScoreNode();
+    console.log('Current Node:', current);
 
-// function drawPlayerX(x, y) {
-//     ctx.beginPath();
-//     ctx.moveTo(x * RECT_SIZE + 5, y * RECT_SIZE + 5);
-//     ctx.lineTo(x * RECT_SIZE + RECT_SIZE, y * RECT_SIZE + RECT_SIZE);
-//     ctx.moveTo(x * RECT_SIZE + RECT_SIZE, y * RECT_SIZE + 5);
-//     ctx.lineTo(x * RECT_SIZE + 5, y * RECT_SIZE + RECT_SIZE);
-//     ctx.strokeStyle = "#ff0000";
-//     ctx.lineWidth = 5;
-//     ctx.stroke();
-// }
+    if (!current) {
+      console.log('No path found');
+      return;
+    }
 
-// drawPlayerX(2, 5);
-// drawPlayerO(5, 5);
+    this.openList = this.openList.filter(node => node !== current);
+    this.closedList.add(`${current.x},${current.y}`);
+    CanvasManagement.drawGrid(current.x, current.y, COLORS.current);
 
+    if (current.x === state.endPos.x && current.y === state.endPos.y) {
+      console.log('Path found!');
+      this.finish();
+      return;
+    }
 
+    for (const dir of DIRECTIONS) {
+      const neighborX = current.x + dir.dx;
+      const neighborY = current.y + dir.dy;
 
-// // Draw player X
-// ctx.beginPath();
-// ctx.moveTo(45, 45);
-// ctx.lineTo(80, 80);
-// ctx.moveTo(80, 45);
-// ctx.lineTo(45, 80);
-// ctx.strokeStyle = "#ff0000";
-// ctx.lineWidth = 5;
-// ctx.stroke();
+      if (neighborX < 0 || neighborX >= state.cols || neighborY < 0 || neighborY >= state.rows) {
+        continue;
+      }
 
-// drawPlayerO(120, 65);
+      if (state.graph[neighborY][neighborX].wall || this.closedList.has(`${neighborX},${neighborY}`)) {
+        continue;
+      }
+
+      var gScore = this.gScore.get(`${neighborX},${neighborY}`);
+      if (gScore === undefined) {
+        gScore = Infinity;
+      }
+
+      const currentG = this.gScore.get(`${current.x},${current.y}`) ?? Infinity;
+      const tentativeGScore = currentG + this.cost(neighborX, neighborY);
+
+      if (tentativeGScore < gScore) {
+        this.cameFrom.set(`${neighborX},${neighborY}`, `${current.x},${current.y}`);
+        this.gScore.set(`${neighborX},${neighborY}`, tentativeGScore);
+        this.fScore.set(`${neighborX},${neighborY}`, tentativeGScore + this.heuristic({ x: neighborX, y: neighborY }, state.endPos));
+
+        if (!this.openList.find(node => node.x === neighborX && node.y === neighborY)) {
+          this.openList.push({ x: neighborX, y: neighborY });
+        }
+      }
+    }
+  },
+
+  loop() {
+    state.intervalId = setInterval(() => {
+      this.logic();
+    }, 1000);
+  },
+
+  heuristic(a, b) {
+    console.log('Heuristic between', a, b);
+    console.log(Math.abs(a.x - b.x) + Math.abs(a.y - b.y));
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  },
+
+  getLowestFScoreNode() {
+    let lowestNode = null;
+    let lowestFScore = Infinity;
+    let lowestHScore = Infinity;
+
+    for (const node of this.openList) {
+      const fScore = this.fScore.get(`${node.x},${node.y}`) ?? Infinity;
+      const hScore = this.heuristic(node, state.endPos);
+
+      if (fScore < lowestFScore ||
+        (fScore === lowestFScore && hScore < lowestHScore)) {
+        lowestFScore = fScore;
+        lowestHScore = hScore;
+        lowestNode = node;
+      }
+    }
+
+    return lowestNode;
+  },
+  cost(x, y) {
+    return 1; // Uniform cost for grid movement
+  },
+
+  drawShortestPath(endNode) {
+    let current = `${endNode.x},${endNode.y}`;
+    const path = [];
+
+    while (this.cameFrom.has(current)) {
+      const [x, y] = current.split(',').map(Number);
+      path.push({ x, y });
+      current = this.cameFrom.get(current);
+    }
+
+    path.reverse();
+
+    for (const node of path) {
+      CanvasManagement.drawGrid(node.x, node.y, COLORS.path);
+    }
+  },
+
+  finish() {
+    console.log('A* finished');
+    this.drawShortestPath({ x: state.endPos.x, y: state.endPos.y });
+    state.isRunning = false;
+    UIControls.startBtn.disabled = false;
+    clearInterval(state.intervalId);
+    state.intervalId = null;
+  }
+};
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+function init() {
+  ThemeManager.init();
+  CanvasManagement.init();
+  GridManager.init();
+  MouseHandler.init();
+  UIControls.init();
+  console.log('Application initialized');
+}
+
+window.onload = init;
+
+// ============================================================================
+// TODO LIST
+// ============================================================================
+
+// TODO: Adjust the speed of BFS traversal using animation frame rate
+// TODO: Add DFS algorithm option using stack
+// TODO: Add A* algorithm option with heuristic
+// TODO: Add reset button to clear walls and restart
+// TODO: Add ability to move start/end positions by dragging
+// TODO: Add algorithm selector dropdown
