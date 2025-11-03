@@ -34,8 +34,8 @@ const state = {
   isRunning: false,
   isMouseDown: false,
   fillColor: COLORS.wall,
-  startPos: { x: 3, y: 3 },
-  endPos: { x: 12, y: 6 },
+  startPos: { x: 4, y: 4 },
+  endPos: { x: 16, y: 4 },
   queue: [],
   current: null,
   neighborIndex: 0,
@@ -315,6 +315,18 @@ const MouseHandler = {
 // PATHFINDING ALGORITHMS
 // ============================================================================
 
+// ============================================================================
+// DEPTH-FIRST SEARCH ALGORITHM
+// ============================================================================
+
+const DepthFirstSearchAlgorithm = {
+  // Implementation would go here
+};
+
+// ============================================================================
+// BREADTH-FIRST SEARCH ALGORITHM
+// ============================================================================
+
 const PathfindingAlgorithms = {
   drawShortestPath(endNode) {
     const entries = [...state.cameFrom].reverse();
@@ -404,6 +416,14 @@ const PathfindingAlgorithms = {
     state.isRunning = false;
     UIControls.startBtn.disabled = false;
   }
+};
+
+// ============================================================================
+// Greedy Best-First Search ALGORITHM
+// ============================================================================
+
+const GreedyBestFirstAlgorithm = {
+  // Implementation would go here
 };
 
 
@@ -545,6 +565,8 @@ const AStarAlgorithm = {
     this.fScore.clear();
   }
 };
+
+
 
 // ============================================================================
 // INITIALIZATION
