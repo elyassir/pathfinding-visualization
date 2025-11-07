@@ -8,13 +8,24 @@ const tools = [
     { id: 'wall', icon: BrickWall, label: 'Wall' },
     { id: 'start', icon: MapPin, label: 'Start' },
     { id: 'end', icon: Flag, label: 'End' },
-    { id: 'erase', icon: Square, label: 'Erase' },
+    { id: 'empty', icon: Square, label: 'Erase' },
+];
+
+const algorithms = [
+    { id: 'dijkstra', label: "Dijkstra's Algorithm" },
+    { id: 'astar', label: 'A* Search' },
+    { id: 'bfs', label: 'Breadth-First Search' },
+    { id: 'dfs', label: 'Depth-First Search' },
+    { id: 'greedy', label: 'Greedy Best-First Search' },
 ];
 
 export default function Dashboard() {
     const [selectedTool, setSelectedTool] = useState('wall');
     const [speed, setSpeed] = useState([50]);
     const { theme, toggleTheme } = useTheme();
+    const [isRunning, setIsRunning] = useState(false);
+    const [selectAlgo, setSelectAlgo] = useState('dijkstra');
+
 
     const handleSelect = (tool) => {
         if (tool === selectedTool) {
@@ -69,14 +80,19 @@ export default function Dashboard() {
                     <div>
                         <h2 className="text-lg font-semibold mb-2">Pathfinding Algorithm</h2>
                         <Flex direction="column" className="w-full"> {/* removed maxWidth */}
-                            <Select.Root size="3" defaultValue="dijkstra" className="w-full">
+                            <Select.Root
+                                size="3"
+                                value={selectAlgo}
+                                onValueChange={(value) => setSelectAlgo(value)} // use onValueChange, not onClick
+                                className="w-full"
+                            >
                                 <Select.Trigger className="w-full" aria-label="Select Pathfinding Algorithm" />
                                 <Select.Content position="popper" className="w-full">
-                                    <Select.Item value="dijkstra">Dijkstra's Algorithm</Select.Item>
-                                    <Select.Item value="a-star">A* Search</Select.Item>
-                                    <Select.Item value="bfs">Breadth-First Search</Select.Item>
-                                    <Select.Item value="dfs">Depth-First Search</Select.Item>
-                                    <Select.Item value="greedy">Greedy Best-First Search</Select.Item>
+                                    {algorithms.map((algo) => (
+                                        <Select.Item key={algo.id} value={algo.id}>
+                                            {algo.label}
+                                        </Select.Item>
+                                    ))}
                                 </Select.Content>
                             </Select.Root>
                         </Flex>
@@ -126,7 +142,7 @@ export default function Dashboard() {
                     <div>
 
                         <h2 className="text-lg font-semibold mb-2">Controls</h2>
-                        <Button variant="primary" size="4" className="w-full! cursor-pointer!">
+                        <Button variant="primary" size="4" className="w-full! cursor-pointer!" disabled={isRunning} onClick={() => setIsRunning(true)}>
                             <Play />
                             Visualize
                         </Button>
@@ -192,7 +208,7 @@ export default function Dashboard() {
 
             </aside>
             {/* Main Grid Area */}
-            <DashboardGrid selectedTool={selectedTool} speed={speed} />
+            <DashboardGrid selectedTool={selectedTool} selectedAlgorithm={selectAlgo} isRunning={isRunning} setIsRunning={setIsRunning} />
         </div>
     </main >
 }
