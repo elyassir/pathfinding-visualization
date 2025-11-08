@@ -1,9 +1,9 @@
 import { Button, Flex, SegmentedControl, Select, Slider } from '@radix-ui/themes';
 import { useTheme } from '../../themes/ThemeContext'
-import { BrickWall, BrushCleaning, Flag, MapPin, Play, RotateCcw, Square, TextAlignStart, TextAlignStartIcon, Trash, Trash2, Zap } from 'lucide-react';
+import { BrickWall, BrushCleaning, Flag, MagnetIcon, MapPin, Play, RotateCcw, Square, TextAlignStart, TextAlignStartIcon, Trash, Trash2, Wand, Zap } from 'lucide-react';
 import { useState } from 'react';
 
-import DashboardGrid from './components/DashboardGrid'
+import DashboardGrid from './components/DashboardBoard'
 const tools = [
     { id: 'wall', icon: BrickWall, label: 'Wall' },
     { id: 'start', icon: MapPin, label: 'Start' },
@@ -20,12 +20,11 @@ const algorithms = [
 ];
 
 export default function Dashboard() {
-    const [selectedTool, setSelectedTool] = useState('wall');
+    const [selectedTool, setSelectedTool] = useState('auto');
     const [speed, setSpeed] = useState([50]);
     const { theme, toggleTheme } = useTheme();
     const [isRunning, setIsRunning] = useState(false);
     const [selectAlgo, setSelectAlgo] = useState('dijkstra');
-
 
     const handleSelect = (tool) => {
         if (tool === selectedTool) {
@@ -136,6 +135,12 @@ export default function Dashboard() {
                                     </Button>
                                 );
                             })}
+                        </div >
+                        <div className="mt-2 w-full grid grid-cols-1">
+                            <Button variant={selectedTool === 'auto' ? 'solid' : 'outline'} size={'3'} className="mt-2 w-full" onClick={() => handleSelect('auto')}>
+                                <Wand size={28} />
+                                <span className="text-lg">Auto Draw</span>
+                            </Button>
                         </div>
                     </div>
 
@@ -149,10 +154,6 @@ export default function Dashboard() {
 
                     </div>
 
-                    {/* <Flex align="center" gap="3" className="" width={"100%"} justify={'center'}>
-              <Button color='gray' variant="outline"> <BrushCleaning width={20} /> Clear Walls</Button>
-              <Button color='gray' variant="outline"> <RotateCcw width={20} /> Reset Board</Button>
-            </Flex> */}
                     {/* Speed Control */}
                     <div>
                         <div className="flex items-center justify-between mb-3">
@@ -165,9 +166,10 @@ export default function Dashboard() {
                             </div>
                         </div>
                         <Slider
+                            disabled={isRunning}
                             value={speed}
                             onValueChange={setSpeed}
-                            min={10}
+                            min={5}
                             max={100}
                             step={10}
                         />
@@ -208,7 +210,7 @@ export default function Dashboard() {
 
             </aside>
             {/* Main Grid Area */}
-            <DashboardGrid selectedTool={selectedTool} selectedAlgorithm={selectAlgo} isRunning={isRunning} setIsRunning={setIsRunning} />
+            <DashboardGrid speed={100-speed+5} selectedTool={selectedTool} setSelectedTool={setSelectedTool} selectedAlgorithm={selectAlgo} isRunning={isRunning} setIsRunning={setIsRunning} />
         </div>
     </main >
 }

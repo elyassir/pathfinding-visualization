@@ -1,21 +1,6 @@
 import React, { use, useContext, useEffect, useRef, useState } from "react";
 import { ThemeProvider, useTheme } from "../../../themes/ThemeContext";
 
-// const exampleCells = [
-//     { type: 'start', col: 5, row: 13 },
-//     { type: 'end', col: 45, row: 13 },
-//     ...Array.from({ length: 15 }, (_, i) => ({ type: 'wall', col: 10, row: i + 5 })),
-//     ...Array.from({ length: 15 }, (_, i) => ({ type: 'wall', col: 25, row: i + 5 })),
-// ];
-
-// const CANVAS_CONFIG = {
-//     rectSize: 30,
-//     width: 1500,
-//     height: 800,
-//     cols: Math.floor(1500 / 30),
-//     rows: Math.floor(800 / 30),
-// };
-
 const COLORS_SET = {
     light: {
         background: '#fafafa',
@@ -44,17 +29,6 @@ const CANVAS_CONFIG = {
     lineWidth: 5
 };
 
-// const COLORS = {
-//   background: '#fff',
-//   rect: '#00f',
-//   wall: '#000000ff',
-//   start: '#013601ff',
-//   end: '#ff0000ff',
-//   current: '#00ff00',
-//   visited: '#ffff00',
-//   path: '#525291ff'
-// };
-
 const DIRECTIONS = [
     { dx: 1, dy: 0 },
     { dx: 0, dy: -1 },
@@ -62,207 +36,17 @@ const DIRECTIONS = [
     { dx: 0, dy: 1 },
 ];
 
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-
-
-const getCellColorBasedOnType = (type, theme) => {
-    console.log('Getting color for type:', type);
-    switch (type) {
-        case 'start':
-
-            return theme.start;
-        case 'end':
-            return theme.end;
-        case 'wall':
-            return theme.wall;
-        case 'visited':
-            return theme.visited;
-        case 'path':
-            return theme.path;
-        case 'empty':
-        default:
-            console.log('Returning empty color for type:', type);
-            return theme.empty;
-    }
-
-}
-
-const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunning }) => {
-    // const canvasRef = useRef(null);
-    // const { theme } = useTheme();
-    // const [isDark, setIsDark] = useState(false);
-    // const [showStroke, setShowStroke] = useState(true);
-    // const [isMouseDown, setIsMouseDown] = useState(false);
-    // const [isRunning, setIsRunning] = useState(false);
-    // const [ctx, setCtx] = useState(null);
-    // const [selectedAlgorithm, setSelectedAlgorithm] = useState('bfs');
-    // const [graph, setGraph] = useState(() => {
-    //     const initial = [];
-    //     for (let j = 0; j < CANVAS_CONFIG.rows; j++) {
-    //         const row = [];
-    //         for (let i = 0; i < CANVAS_CONFIG.cols; i++) {
-    //             row.push({ visited: false, wall: false });
-    //         }
-    //         initial.push(row);
-    //     }
-    //     return initial;
-    // });
-    // const intervalRef = useRef(null);
-    // const algoStateRef = useRef({});
-
-    // // Initialize canvas
-    // useEffect(() => {
-    //     const canvas = canvasRef.current;
-    //     if (!canvas) return;
-
-    //     const ctx = canvas.getContext('2d');
-    //     canvas.width = CANVAS_CONFIG.width - CANVAS_CONFIG.lineWidth;
-    //     canvas.height = CANVAS_CONFIG.height - CANVAS_CONFIG.lineWidth;
-
-    //     drawBoard(ctx);
-    // }, [graph]);
-
-    // const drawGrid = (ctx, x, y, color, skipStartEnd = false) => {
-    //     if (!skipStartEnd) {
-    //         if (x === startPos.x && y === startPos.y) return;
-    //         if (x === endPos.x && y === endPos.y) return;
-    //     }
-
-    //     ctx.beginPath();
-    //     ctx.rect(
-    //         CANVAS_CONFIG.rectSize * x,
-    //         CANVAS_CONFIG.rectSize * y,
-    //         CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth,
-    //         CANVAS_CONFIG.rectSize - CANVAS_CONFIG.lineWidth
-    //     );
-    //     ctx.fillStyle = color;
-    //     ctx.fill();
-    // };
-
-    // const [startPos] = useState({ x: 4, y: 4 });
-    // const [endPos] = useState({ x: 16, y: 4 });
-    // const drawBoard = (ctx) => {
-    //     ctx.fillStyle = COLORS.background;
-    //     ctx.fillRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
-
-    //     for (let j = 0; j < CANVAS_CONFIG.rows; j++) {
-    //         for (let i = 0; i < CANVAS_CONFIG.cols; i++) {
-    //             let color = getColorAt(i, j);
-    //             drawGrid(ctx, i, j, color);
-    //         }
-    //     }
-
-    //     drawGrid(ctx, startPos.x, startPos.y, COLORS.start, true);
-    //     drawGrid(ctx, endPos.x, endPos.y, COLORS.end, true);
-    // };
-
-    // const getColorAt = (x, y) => {
-    //     if (x === startPos.x && y === startPos.y) return COLORS.start;
-    //     if (x === endPos.x && y === endPos.y) return COLORS.end;
-    //     if (graph[y][x].wall) return COLORS.wall;
-    //     return COLORS.rect;
-    // };
-
-    // const handleMouseDown = (e) => {
-    //     if (isRunning) return;
-    //     setIsMouseDown(true);
-    //     handleClick(e, true);
-    // };
-
-    // const handleMouseUp = () => {
-    //     if (isRunning) return;
-    //     setIsMouseDown(false);
-    // };
-
-    // const handleMouseMove = (e) => {
-    //     if (!isMouseDown || isRunning) return;
-    //     handleClick(e, false);
-    // };
-
-    // const drawOneCell = (col, row) => {
-    //     const canvas = canvasRef.current;
-    //     if (!canvas) return;
-
-    //     const theme = isDark ? COLORS.dark : COLORS.light;
-
-    //     const color = getCellColorBasedOnType(selectedTool, theme);
-    //     drawOneCellOnContext(col, row, color);
-    // };
-
-    // const drawOneCellOnContext = (col, row, color) => {
-    //     const canvas = canvasRef.current;
-    //     if (!canvas) return;
-    //     const ctx = canvas.getContext('2d');
-
-    //     ctx.fillStyle = color;
-    //     ctx.fillRect(
-    //         col * CANVAS_CONFIG.rectSize,
-    //         row * CANVAS_CONFIG.rectSize,
-    //         CANVAS_CONFIG.rectSize,
-    //         CANVAS_CONFIG.rectSize
-    //     );
-
-    //     if (showStroke) {
-    //         const theme = isDark ? COLORS.dark : COLORS.light;
-    //         ctx.strokeStyle = theme.gridLine;
-    //         ctx.lineWidth = 0.5;
-    //         ctx.strokeRect(
-    //             col * CANVAS_CONFIG.rectSize,
-    //             row * CANVAS_CONFIG.rectSize,
-    //             CANVAS_CONFIG.rectSize,
-    //             CANVAS_CONFIG.rectSize
-    //         );
-    //     }
-    // }
-
-    // const handleClick = (e, isInitialClick) => {
-    //     const canvas = canvasRef.current;
-    //     if (!canvas) return;
-
-    //     const rect = canvas.getBoundingClientRect();
-    //     const x = e.clientX - rect.left;
-    //     const y = e.clientY - rect.top;
-
-    //     const col = Math.floor(x / CANVAS_CONFIG.rectSize);
-    //     const row = Math.floor(y / CANVAS_CONFIG.rectSize);
-
-    //     console.log(`Clicked on cell: (${col}, ${row}), initialClick: ${isInitialClick}`);
-    //     // Here you can add logic to modify the exampleCells or handle interactions
-    //     drawOneCell(col, row);
-    // }
-
-    // // Detect theme changes
-    // useEffect(() => {
-    //     setIsDark(theme === 'dark');
-    // }, [theme]);
-
-    // // Redraw when theme changes
-    // useEffect(() => {
-    //     drawGrid();
-    // }, [isDark]);
-
-    // useEffect(() => {
-    //     // const handleResize = () => {
-    //     drawGrid();
-    //     // };
-    //     // window.addEventListener('resize', handleResize);
-    //     return () => {
-    //         // window.removeEventListener('resize', handleResize);
-    //     };
-    // }, [exampleCells]);
-
+const DashboardGrid = ({ speed, selectedTool, setSelectedTool, selectedAlgorithm, isRunning, setIsRunning }) => {
     const canvasRef = useRef(null);
     const { theme } = useTheme();
     const COLORS = theme === 'dark' ? COLORS_SET.dark : COLORS_SET.light;
     const [isMouseDown, setIsMouseDown] = useState(false);
-    const [fillColor, setFillColor] = useState(COLORS.wall);
+    const [selectedToolLocal, setSelectedToolLocal] = useState('wall');
 
     const cols = Math.floor(CANVAS_CONFIG.width / CANVAS_CONFIG.rectSize);
     const rows = Math.floor(CANVAS_CONFIG.height / CANVAS_CONFIG.rectSize);
-
-    useEffect(() => {
-        setFillColor(getCellColorBasedOnType(selectedTool, COLORS));
-    }, [selectedTool]);
 
     const [graph, setGraph] = useState(() => {
         const initial = [];
@@ -295,11 +79,6 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
     }, [graph, theme, startPos, endPos]);
 
     const drawGrid = (ctx, x, y, color, skipStartEnd = false) => {
-        // if (!skipStartEnd) {
-        //     if (x === startPos.x && y === startPos.y) return;
-        //     if (x === endPos.x && y === endPos.y) return;
-        // }
-
         ctx.beginPath();
         ctx.rect(
             CANVAS_CONFIG.rectSize * x,
@@ -321,14 +100,12 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
                 drawGrid(ctx, i, j, color);
             }
         }
-
-        drawGrid(ctx, startPos.x, startPos.y, COLORS.start, true);
-        drawGrid(ctx, endPos.x, endPos.y, COLORS.end, true);
     };
 
     const getColorAt = (x, y) => {
         if (x === startPos.x && y === startPos.y) return COLORS.start;
         if (x === endPos.x && y === endPos.y) return COLORS.end;
+        if (graph[y][x].visited) return COLORS.visited;
         if (graph[y][x].wall) return COLORS.wall;
         return COLORS.rect;
     };
@@ -342,6 +119,7 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
     const handleMouseUp = () => {
         if (isRunning) return;
         setIsMouseDown(false);
+        setSelectedToolLocal('wall');
     };
 
     const handleMouseMove = (e) => {
@@ -360,6 +138,34 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
         const gridX = Math.floor(clickX / CANVAS_CONFIG.rectSize);
         const gridY = Math.floor(clickY / CANVAS_CONFIG.rectSize);
 
+        if (gridX < 0 || gridX >= cols || gridY < 0 || gridY >= rows) return;
+
+        if (initialClick) {
+            if (gridX === startPos.x && gridY === startPos.y) {
+                setStartPos({ x: gridX, y: gridY });
+                setSelectedToolLocal('start');
+                return;
+            }
+
+            if (gridX === endPos.x && gridY === endPos.y) {
+                setEndPos({ x: gridX, y: gridY });
+                setSelectedToolLocal('end');
+                return;
+            }
+
+            const cell = graph[gridY][gridX];
+
+            if (cell.wall) {
+                setSelectedToolLocal('empty');
+            } else {
+                setSelectedToolLocal('wall');
+            }
+        }
+
+        if (selectedTool === 'auto') {
+            toggleWallLocal(gridX, gridY);
+            return;
+        }
         toggleWall(gridX, gridY);
     };
 
@@ -382,21 +188,39 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
             });
         }
     };
+    const toggleWallLocal = (x, y) => {
+        // if ((x === startPos.x && y === startPos.y) || (x === endPos.x && y === endPos.y)) return;
 
-    // const resetGrid = () => {
-    //     if (intervalRef.current) {
-    //         clearInterval(intervalRef.current);
-    //         intervalRef.current = null;
-    //     }
+        if (selectedToolLocal === 'start') {
+            setStartPos({ x, y });
+        }
 
-    //     setGraph(prev => prev.map(row => row.map(cell => ({ ...cell, visited: false }))));
-    //     setIsRunning(false);
-    //     algoStateRef.current = {};
-    // };
+        if (selectedToolLocal === 'end') {
+            setEndPos({ x, y });
+        }
+
+        if (selectedToolLocal === 'wall' || selectedToolLocal === 'empty') {
+            setGraph(prev => {
+                const newGraph = prev.map(row => row.map(cell => ({ ...cell })));
+                newGraph[y][x].wall = selectedToolLocal === 'wall'
+                return newGraph;
+            });
+        }
+    };
+
+    const resetGrid = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+
+        // setGraph(prev => prev.map(row => row.map(cell => ({ ...cell, visited: false }))));
+        algoStateRef.current = {};
+        drawBoard(canvasRef.current.getContext('2d'));
+    };
 
     const startAlgorithm = () => {
-        // resetGrid();
-        // setIsRunning(true);
+        resetGrid();
 
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -428,7 +252,7 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
     }, [isRunning]);
 
     // BFS Implementation
-    const runBFS = (ctx) => {
+    const runBFS = async (ctx) => {
         const queue = [{ x: startPos.x, y: startPos.y }];
         const cameFrom = new Map();
         const visited = new Set();
@@ -436,12 +260,7 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
         visited.add(`${startPos.x},${startPos.y}`);
         cameFrom.set(`${startPos.x},${startPos.y}`, null);
 
-        intervalRef.current = setInterval(() => {
-            if (queue.length === 0) {
-                finishAlgorithm(ctx, cameFrom, null);
-                return;
-            }
-
+        while (queue.length > 0) {
             const current = queue.shift();
 
             if (current.x === endPos.x && current.y === endPos.y) {
@@ -470,11 +289,12 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
                     }
                 }
             }
-        }, 50);
+            await sleep(speed);
+        }
     };
 
     // DFS Implementation
-    const runDFS = (ctx) => {
+    const runDFS = async (ctx) => {
         const stack = [{ x: startPos.x, y: startPos.y }];
         const cameFrom = new Map();
         const visited = new Set();
@@ -482,11 +302,7 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
         visited.add(`${startPos.x},${startPos.y}`);
         cameFrom.set(`${startPos.x},${startPos.y}`, null);
 
-        intervalRef.current = setInterval(() => {
-            if (stack.length === 0) {
-                finishAlgorithm(ctx, cameFrom, null);
-                return;
-            }
+        while (stack.length > 0) {
 
             const current = stack.pop();
 
@@ -516,11 +332,12 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
                     }
                 }
             }
-        }, 50);
+            await sleep(speed);
+        }
     };
 
     // A* Implementation
-    const runAStar = (ctx) => {
+    const runAStar = async (ctx) => {
         const openList = [{ x: startPos.x, y: startPos.y, f: 0 }];
         const closedSet = new Set();
         const cameFrom = new Map();
@@ -532,11 +349,8 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
         gScore.set(`${startPos.x},${startPos.y}`, 0);
         fScore.set(`${startPos.x},${startPos.y}`, heuristic(startPos, endPos));
 
-        intervalRef.current = setInterval(() => {
-            if (openList.length === 0) {
-                finishAlgorithm(ctx, cameFrom, null);
-                return;
-            }
+        while (openList.length > 0) {
+
 
             openList.sort((a, b) => a.f - b.f);
             const current = openList.shift();
@@ -580,22 +394,18 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
                     }
                 }
             }
-        }, 50);
+            await sleep(speed);
+        }
     };
 
     // Greedy Best-First Search Implementation
-    const runGreedy = (ctx) => {
+    const runGreedy = async (ctx) => {
         const openList = [{ x: startPos.x, y: startPos.y, h: 0 }];
         const closedSet = new Set();
         const cameFrom = new Map();
 
         const heuristic = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-
-        intervalRef.current = setInterval(() => {
-            if (openList.length === 0) {
-                finishAlgorithm(ctx, cameFrom, null);
-                return;
-            }
+        while (openList.length > 0) {
 
             openList.sort((a, b) => a.h - b.h);
             const current = openList.shift();
@@ -630,7 +440,8 @@ const DashboardGrid = ({ selectedTool, selectedAlgorithm, isRunning, setIsRunnin
                     }
                 }
             }
-        }, 50);
+            await sleep(speed);
+        }
     };
 
     const finishAlgorithm = (ctx, cameFrom, endNode) => {
